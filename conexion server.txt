@@ -1,0 +1,216 @@
+const express = require('express')
+const bodyParser = require('body-parser')
+const AssistantV2 = require('ibm-watson/assistant/v2');
+const { IamAuthenticator } = require('ibm-watson/auth');
+
+const cors = require('cors');
+
+const app = express()
+app.use(cors());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json())
+
+
+//Repuesta generica de servidor
+app.get('/', function(req, res) {
+    res.json('Asistant READY TO GO');
+})
+
+//Prueba de conexion al puerto
+app.listen(3000, () => {
+    console.log('Escuchando puerto:', 3000);
+});
+
+
+//API DE IBM WATSON
+const assistantId = 'c81a57d9-727a-4988-bc03-5e57c5ec0bdc';
+
+const assistant = new AssistantV2({
+    version: '2020-02-05',
+    authenticator: new IamAuthenticator({
+        apikey: 'NrzcCJ8QW-cdApuj2Ls2njXl5O1bh2rDpHyoDBZp8ql6',
+    }),
+    url: 'https://api.us-east.assistant.watson.cloud.ibm.com/instances/59f14005-14e5-4c73-a1ff-51f66dc1a24f',
+    disableSslVerification: true,
+});
+
+
+//Generar la conversacion
+app.post('/conversation', (req, res) => {
+    let { text, sessionId } = req.body;
+
+    const params = {
+        input: {
+            message_type: 'text',
+            text: text
+        },
+        assistantId,
+        sessionId: sessionId
+    };
+
+    assistant.message(params, (err, response) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).json({
+                ok: false,
+                err
+            });
+        } else {
+            res.json({
+                ok: true,
+                response
+            });
+        }
+    });
+});
+
+
+//Metodo para crear una nueva sesion
+app.post('/abrirsesion', (req, res) => {
+    const params = {
+        assistantId
+    };
+
+    assistant.createSession(params, (err, response) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).json({
+                ok: false,
+                err
+            });
+        } else {
+            res.json({
+                ok: true,
+                response
+            });
+        }
+    });
+});
+
+//Metodo para cerrar sesion 
+app.post('/cerrarsesion', (req, res) => {
+    const { sessionId } = req.body;
+    const params = {
+        assistantId,
+        sessionId: sessionId
+    };
+
+    assistant.deleteSession(params, (err, response) => {
+        if (err) {
+            console.error(err);
+            return res.status(400).json({
+                ok: false,
+                err
+            });
+        } else {
+            res.json({
+                ok: true,
+                response
+            });
+        }
+    });
+});
+
+
+module.exports = app;
+
+
+
+
+
+
+///////////////////////////MI SERVIDOR
+const { response } = require('express')
+const express = require('express')
+const app = express()
+const bodyParser = require('body-parser')
+const AssistantV2 = require('ibm-watson/assistant/v2');
+const assistantId = 'c81a57d9-727a-4988-bc03-5e57c5ec0bdc';
+const { IamAuthenticator } = require('ibm-watson/auth');
+
+
+
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+
+app.get('/', function(req, res) {
+    res.send('server up')
+})
+app.post('/consultas', function(req, res) {
+    res.send('server up consultas')
+})
+
+//VERIFICA LA CONEXION EXISTENTE
+app.listen(3000, () => {
+    console.log("escuchando en el puerto:", 3000);
+})
+
+
+//METODO PARA CONECTAR A IBM WATSON
+const assistant = new AssistantV2({
+    version: '2021-11-27',
+    authenticator: new IamAuthenticator({
+        apikey: 'NrzcCJ8QW-cdApuj2Ls2njXl5O1bh2rDpHyoDBZp8ql6',
+    }),
+    serviceUrl: 'https://api.us-east.assistant.watson.cloud.ibm.com/instances/59f14005-14e5-4c73-a1ff-51f66dc1a24f',
+    disableSslVerification: true,
+});
+
+//Metodo para crear una nueva sesion
+app.post('/abrirsesion', function(req, res) {
+
+    assistant.createSession({
+            assistantId: assistantId
+        })
+        .then(res => {
+            console.log(res);
+            return res
+                //console.log(JSON.stringify(res.result, null, 2));
+        })
+        .catch(err => {
+            console.log(err);
+        });
+})
+
+//Metodo para cerrar sesion 
+app.post('/cerrarsesion', function(req, res) {
+    const { sessionId } = req.body
+    assistant.deleteSession({
+            assistantId: assistantId,
+            sessionId
+        })
+        .then(res => {
+            console.log("sesion cerrada");
+            console.log(JSON.stringify(res.result, null, 2));
+        })
+        .catch(err => {
+            console.log(err);
+        });
+})
+
+//Metodo para realizar una conversacion
+app.post('/conversation', (req, res) => {
+    let { text, sessionId } = req.body;
+
+    assistant.message({
+            assistantId,
+            sessionId,
+            input: {
+                'message_type': 'text',
+                'text': text
+            }
+        })
+        .then(res => {
+            console.log(JSON.stringify(res.result, null, 2));
+        })
+        .catch(err => {
+            console.log(err);
+        });
+
+
+
+
+});
+
+
+module.exports = app;
